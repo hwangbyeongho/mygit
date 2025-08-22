@@ -9,7 +9,7 @@
 
 with step1 as (
 	select distinct user_id
-		   , date_format(login_date, '%Y-%m-01') as ym
+		 , date_format(login_date, '%Y-%m-01') as ym
 	from login_logs_ecom
 	where login_date is not null
 	  and login_date between '2018-05-01' and '2020-04-30'
@@ -18,24 +18,24 @@ with step1 as (
 ), step2 as (
 	select user_id
 	  	 , ym
-		   , lag(ym, 1) over (partition by user_id order by ym) as last_login
+		 , lag(ym, 1) over (partition by user_id order by ym) as last_login
 	from step1
 	-- 유저별 과거 로그인 월을 lag()로 가져옴
 	
 ), step3 as (
 	select user_id
-		   , ym
+		 , ym
 	  	 , case
-		 	  	when last_login is null then 'new'
-		   		when timestampdiff(month, last_login, ym) > 1 then 'resurrected'
-		 	  	when timestampdiff(month, last_login, ym) = 1 then 'retained'
-		     end as user_type
+		 	  when last_login is null then 'new'
+		   	  when timestampdiff(month, last_login, ym) > 1 then 'resurrected'
+		 	  when timestampdiff(month, last_login, ym) = 1 then 'retained'
+		   end as user_type
 	from step2
 	-- 현재 로그인 월과 직전 로그인 월의 '월' 단위 차이에 따라 유저 타입 분류
 
 ), step4 as (
 	select ym
-		   , user_type
+		 , user_type
 	  	 , count(distinct user_id) as user_cnt
 	from step3
 	group by ym, user_type
@@ -44,9 +44,9 @@ with step1 as (
 
 )	-- 테이블 피봇
 select ym 
-	   , sum(user_cnt) as 'mau'
+     , sum(user_cnt) as 'mau'
   	 , sum(case when user_type = 'new' then user_cnt else 0 end) as 'new'
-	   , sum(case when user_type = 'resurrected' then user_cnt else 0 end) as 'resurrected'
-	   , sum(case when user_type = 'retained' then user_cnt else 0 end) as 'retained'
+	 , sum(case when user_type = 'resurrected' then user_cnt else 0 end) as 'resurrected'
+	 , sum(case when user_type = 'retained' then user_cnt else 0 end) as 'retained'
 from step4
 group by ym
