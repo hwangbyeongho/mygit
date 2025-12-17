@@ -9,29 +9,29 @@
 
 with step1 as (
 	select distinct user_id
-		 , date_format(login_date, '%Y-%m-01') as ym
+		 , date_format(login_date, '%Y-%m-01') as ym -- 편의상, 'YYYY-MM-01' 형식으로 표현
 	from login_logs_ecom
 	where login_date is not null
 	  and login_date between '2018-05-01' and '2020-04-30'
-	-- 연월 단위로 로그인한 유저 기록을 중복없이 추출
+	-- 연월 단위로 로그인한 유저 기록을 중복없이 반환. 즉, 월마다 MAU인 유저의 리스트를 반환.
 	  
 ), step2 as (
 	select user_id
 	  	 , ym
 		 , lag(ym, 1) over (partition by user_id order by ym) as last_login
 	from step1
-	-- 유저별 과거 로그인 월을 lag()로 가져옴
+	-- 유저별 직전 로그인 기록을 lag()로 가져옴
 	
 ), step3 as (
 	select user_id
 		 , ym
 	  	 , case
-		 	  when last_login is null then 'new'
-		   	  when timestampdiff(month, last_login, ym) > 1 then 'resurrected'
-		 	  when timestampdiff(month, last_login, ym) = 1 then 'retained'
+		 	  when last_login is null then 'new' -- 신규
+		   	  when timestampdiff(month, last_login, ym) > 1 then 'resurrected' -- 복귀
+		 	  when timestampdiff(month, last_login, ym) = 1 then 'retained' -- 기존
 		   end as user_type
 	from step2
-	-- 현재 로그인 월과 직전 로그인 월의 '월' 단위 차이에 따라 유저 타입 분류
+	-- 각 행의 로그인 기록과 직전 로그인 기록 간 '월' 단위 차이에 따라 유저 타입 분류
 
 ), step4 as (
 	select ym
